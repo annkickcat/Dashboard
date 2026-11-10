@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Disney Magical Dashboard (Live Projector)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Prompt -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <!-- QR Code CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    body { font-family: 'Prompt', sans-serif; }
+    .font-mono-num { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+  </style>
+  <!-- Firebase App & Realtime Database SDK (Compat v10) -->
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-database-compat.js"></script>
+</head>
+<body class="bg-gradient-to-b from-[#070a1e] via-[#0d1238] to-[#090d28] text-slate-100 min-h-screen p-6 lg:p-8">
+  <div class="max-w-7xl mx-auto space-y-6">
+    <!-- Top Header: Disney Magical Edition -->
+    <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-amber-400/20">
+      <div>
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-200 text-slate-950 flex items-center justify-center font-bold text-2xl shadow-lg shadow-amber-500/20">
+            👑
+          </div>
+          <div>
+            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-400 bg-clip-text text-transparent">
+              Disney Magical Evaluation Dashboard
+            </h1>
+            <p class="text-xs md:text-sm text-slate-300">✨ ผลการประเมินความพึงพอใจการอบรมแดนมหัศจรรย์ (กราฟวงกลม &amp; อัปเดตเรียลไทม์)</p>
+          </div>
+        </div>
+      </div>
+      <!-- Actions: Fullscreen & CSV Download -->
+      <div class="flex items-center gap-3">
+        <button onclick="toggleFullscreen()" class="px-3.5 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-amber-200 text-xs font-medium border border-amber-400/30 flex items-center gap-1.5 transition-colors">
+          <span>✨ เต็มจอ (Projector)</span>
+        </button>
+        <button onclick="downloadCSV()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 text-xs font-bold shadow-lg shadow-amber-500/20 flex items-center gap-1.5 transition-all">
+          <span>ดาวน์โหลด CSV</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Top KPI Row -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <!-- Total Responses -->
+      <div class="bg-slate-900/75 backdrop-blur-md border border-amber-400/25 rounded-2xl p-5 shadow-xl">
+        <p class="text-xs text-amber-200/90 font-semibold mb-1">จำนวนผู้ประเมินทั้งหมด</p>
+        <div class="flex items-baseline gap-2">
+          <span id="totalRespondents" class="text-4xl sm:text-5xl font-extrabold text-white font-mono-num">0</span>
+          <span class="text-xs text-amber-200/80">คน</span>
+        </div>
+        <p class="text-[11px] text-emerald-400 mt-2 flex items-center gap-1">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          ซิงก์ผลลัพธ์สดทันที
+        </p>
+      </div>
+
+      <!-- Overall Average with Disney Badge -->
+      <div class="bg-slate-900/75 backdrop-blur-md border border-amber-400/25 rounded-2xl p-5 shadow-xl md:col-span-2">
+        <div class="flex items-center justify-between">
+          <p class="text-xs text-amber-200/90 font-semibold mb-1">คะแนนความพึงพอใจเฉลี่ยรวม (เต็ม 5.00)</p>
+          <span id="levelBadge" class="text-xs font-bold px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40">
+            กำลังโหลด...
+          </span>
+        </div>
+        <div class="flex items-baseline gap-3 mt-1">
+          <span id="overallScore" class="text-4xl md:text-5xl font-extrabold font-mono-num bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-400 bg-clip-text text-transparent">0.00</span>
+          <span class="text-sm font-semibold text-slate-400">/ 5.00</span>
+          <span id="interpretationText" class="text-xs text-amber-300 font-semibold ml-2"></span>
+        </div>
+        <div class="w-full bg-slate-800/80 h-3 rounded-full mt-3 overflow-hidden border border-amber-400/20">
+          <div id="overallProgress" class="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 h-3 rounded-full transition-all duration-700 shadow-sm" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- QR Code Attendee Join Card with Disney Gold Frame -->
+      <div class="bg-gradient-to-br from-indigo-950/80 via-slate-900 to-purple-950/70 border border-amber-400/40 rounded-2xl p-4 flex items-center gap-4 shadow-xl">
+        <div id="qrcode" class="bg-white p-2 rounded-xl shrink-0 shadow-md"></div>
+        <div>
+          <p class="text-xs font-bold text-amber-400 uppercase tracking-wider">สแกนร่วมประเมิน</p>
+          <p class="text-[11px] text-slate-300 mt-1">ใช้มือถือส่องกล้อง QR Code เพื่อเปิดแบบสอบถาม</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 Questions Circular Donut Gauges (กราฟวงกลมรายข้อ) -->
+    <div class="bg-slate-900/75 backdrop-blur-md border border-amber-400/25 rounded-2xl p-6 shadow-xl">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <span>👑 ผลคะแนนเฉลี่ยรายข้อรูปแบบกราฟวงกลม (Circular Gauges)</span>
+          </h2>
+          <p class="text-xs text-slate-300">แสดงผลคะแนน 1.00 ถึง 5.00 ในรูปแบบวงกลมเรเดียล</p>
+        </div>
+        <div class="text-xs text-amber-300 font-mono-num font-semibold">
+          เกณฑ์: 4.51-5.00 มากที่สุด ✨
+        </div>
+      </div>
+
+      <!-- Circular Gauges Grid -->
+      <div id="circularContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+
+    <!-- Recent Suggestions Feed -->
+    <div class="bg-slate-900/75 backdrop-blur-md border border-amber-400/25 rounded-2xl p-6 shadow-xl flex flex-col">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+          <span>✨ เสียงสะท้อนจากผู้เข้าร่วมอบรม</span>
+        </h2>
+        <span id="feedbackCount" class="text-xs text-amber-300 font-mono-num">0 รายการ</span>
+      </div>
+      <div id="feedbackList" class="space-y-3 overflow-y-auto max-h-[360px] pr-1">
+        <p class="text-xs text-slate-500 py-8 text-center">ยังไม่มีข้อเสนอแนะเข้ามา</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const responsesRef = db.ref('training_evaluations');
+
+    const QUESTIONS = [
+      'ความชัดเจนและประโยชน์ของเนื้อหาหลักสูตร',
+      'ทักษะและความสามารถในการถ่ายทอดของวิทยากร',
+      'การนำความรู้และเทคนิคไปประยุกต์ใช้ในการทำงานจริง',
+      'ความเหมาะสมของระยะเวลาและสื่อ/เอกสารประกอบ',
+      'ความพึงพอใจในภาพรวมของการอบรมครั้งนี้'
+    ];
+
+    const THEME_COLORS = ['#fbbf24', '#34d399', '#60a5fa', '#c084fc', '#fde047'];
+
+    let cachedResponses = [];
+
+    const surveyUrl = window.location.href.replace(/dashboard\\.html.*/, 'index.html');
+    new QRCode(document.getElementById("qrcode"), {
+      text: surveyUrl,
+      width: 80,
+      height: 80,
+      colorDark : "#0f172a",
+      colorLight : "#ffffff",
+      correctLevel : QRCode.CorrectLevel.M
+    });
+
+    function getInterpretation(score) {
+      if (score >= 4.51) return { level: 'มากที่สุด ✨', color: '#fbbf24', badge: 'bg-amber-400/20 text-amber-300 border-amber-400/40' };
+      if (score >= 3.51) return { level: 'มาก ⭐', color: '#34d399', badge: 'bg-emerald-400/20 text-emerald-300 border-emerald-400/40' };
+      if (score >= 2.51) return { level: 'ปานกลาง', color: '#60a5fa', badge: 'bg-blue-400/20 text-blue-300 border-blue-400/40' };
+      if (score >= 1.51) return { level: 'น้อย', color: '#f59e0b', badge: 'bg-orange-400/20 text-orange-300 border-orange-400/40' };
+      return { level: 'น้อยที่สุด', color: '#f87171', badge: 'bg-rose-400/20 text-rose-300 border-rose-400/40' };
+    }
+
+    responsesRef.on('value', (snapshot) => {
+      const data = snapshot.val();
+      cachedResponses = [];
+      if (data) {
+        Object.keys(data).forEach(key => {
+          cachedResponses.push({ id: key, ...data[key] });
+        });
+      }
+      renderDashboard();
+    });
+
+    function renderDashboard() {
+      const total = cachedResponses.length;
+      document.getElementById('totalRespondents').innerText = total;
+
+      if (total === 0) {
+        document.getElementById('overallScore').innerText = '0.00';
+        document.getElementById('levelBadge').innerText = 'รอข้อมูลการประเมิน';
+        document.getElementById('overallProgress').style.width = '0%';
+        renderCircularGauges([0,0,0,0,0]);
+        document.getElementById('feedbackList').innerHTML = '<p class="text-xs text-slate-500 py-8 text-center">ยังไม่มีข้อเสนอแนะเข้ามา</p>';
+        return;
+      }
+
+      const qSums = [0, 0, 0, 0, 0];
+      cachedResponses.forEach(res => {
+        if (res.ratings) {
+          res.ratings.forEach((val, i) => {
+            qSums[i] += Number(val) || 0;
+          });
+        }
+      });
+
+      const qAverages = qSums.map(sum => (sum / total));
+      const overallAvg = qAverages.reduce((a, b) => a + b, 0) / 5;
+      const interp = getInterpretation(overallAvg);
+
+      document.getElementById('overallScore').innerText = overallAvg.toFixed(2);
+      document.getElementById('levelBadge').className = 'text-xs font-bold px-3 py-1 rounded-full border ' + interp.badge;
+      document.getElementById('levelBadge').innerText = interp.level;
+      document.getElementById('interpretationText').innerText = 'ระดับ: ' + interp.level;
+      document.getElementById('overallProgress').style.width = ((overallAvg / 5) * 100) + '%';
+
+      renderCircularGauges(qAverages);
+      renderFeedbacks();
+    }
+
+    // สร้างกราฟวงกลม SVG สำหรับแต่ละข้อ
+    function renderCircularGauges(averages) {
+      const container = document.getElementById('circularContainer');
+      container.innerHTML = '';
+      const radius = 50;
+      const circ = 2 * Math.PI * radius;
+
+      QUESTIONS.forEach((qText, idx) => {
+        const avg = averages[idx] || 0;
+        const pct = Math.min(100, (avg / 5) * 100);
+        const offset = circ - (pct / 100) * circ;
+        const color = THEME_COLORS[idx % THEME_COLORS.length];
+        const interp = getInterpretation(avg);
+
+        const card = document.createElement('div');
+        card.className = 'bg-slate-950/60 rounded-2xl p-4 border border-amber-400/20 flex flex-col items-center text-center shadow-lg';
+        card.innerHTML = \`
+          <div class="flex items-center gap-1.5 mb-2">
+            <span class="w-6 h-6 rounded-full bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center">
+              \${idx + 1}
+            </span>
+            <span class="text-xs font-semibold text-amber-200">ข้อที่ \${idx + 1}</span>
+          </div>
+
+          <div class="relative w-32 h-32 my-1 flex items-center justify-center">
+            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="\${radius}" stroke="#1e293b" stroke-width="8" fill="transparent" />
+              <circle cx="60" cy="60" r="\${radius}" stroke="\${color}" stroke-width="8" stroke-dasharray="\${circ}" stroke-dashoffset="\${offset}" stroke-linecap="round" fill="transparent" class="transition-all duration-700" />
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span class="text-2xl font-extrabold font-mono-num text-white">\${avg.toFixed(2)}</span>
+              <span class="text-[10px] text-slate-400">/ 5.00</span>
+              <span class="text-[10px] text-amber-300 font-mono-num">(\${Math.round(pct)}%)</span>
+            </div>
+          </div>
+
+          <span class="mt-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border \${interp.badge}">
+            \${interp.level}
+          </span>
+          <p class="mt-2 text-xs font-medium text-slate-200 line-clamp-2 leading-snug">
+            \${qText}
+          </p>
+        \`;
+        container.appendChild(card);
+      });
+    }
+
+    function renderFeedbacks() {
+      const list = document.getElementById('feedbackList');
+      const feedbacks = cachedResponses
+        .filter(r => r.feedback && r.feedback.trim().length > 0)
+        .reverse();
+
+      document.getElementById('feedbackCount').innerText = feedbacks.length + ' รายการ';
+
+      if (feedbacks.length === 0) {
+        list.innerHTML = '<p class="text-xs text-slate-500 py-8 text-center">ยังไม่มีข้อเสนอแนะข้อความเข้ามา</p>';
+        return;
+      }
+
+      list.innerHTML = '';
+      feedbacks.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'p-3.5 bg-slate-950/80 rounded-xl border border-amber-400/20 text-xs space-y-1.5';
+        card.innerHTML = \`
+          <p class="text-slate-200 leading-relaxed">"\${item.feedback}"</p>
+          <div class="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-800">
+            <span class="text-amber-300 font-semibold">คะแนนเฉลี่ย: \${(item.ratings.reduce((a,b)=>a+b,0)/5).toFixed(1)}/5</span>
+            <span>\${new Date(item.createdAt || Date.now()).toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})} น.</span>
+          </div>
+        \`;
+        list.appendChild(card);
+      });
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    function downloadCSV() {
+      if (cachedResponses.length === 0) {
+        alert('ยังไม่มีข้อมูลสำหรับดาวน์โหลด');
+        return;
+      }
+
+      let csvContent = "\\uFEFF"; // UTF-8 BOM for Thai Excel
+      csvContent += "ลำดับ,วันเวลาที่ประเมิน,ข้อ 1 เนื้อหา,ข้อ 2 วิทยากร,ข้อ 3 การนำไปใช้,ข้อ 4 เวลาและสื่อ,ข้อ 5 ภาพรวม,คะแนนเฉลี่ย,ข้อเสนอแนะ\\r\\n";
+
+      cachedResponses.forEach((res, idx) => {
+        const r = res.ratings || [0,0,0,0,0];
+        const avg = (r.reduce((a,b)=>a+b,0)/5).toFixed(2);
+        const fb = (res.feedback || '').replace(/"/g, '""');
+        const dateStr = new Date(res.createdAt || Date.now()).toLocaleString('th-TH');
+        csvContent += \`\${idx + 1},"\${dateStr}",\${r[0]},\${r[1]},\${r[2]},\${r[3]},\${r[4]},\${avg},"\${fb}"\\r\\n\`;
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", \`disney_training_evaluation_\${new Date().toISOString().slice(0,10)}.csv\`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
+</body>
+</html>

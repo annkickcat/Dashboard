@@ -1,0 +1,6 @@
+{
+  "name": "LiveEval - Real-time Training Survey & Dashboard",
+  "description": "เว็บแอปประเมินความพึงพอใจการอบรมแบบเรียลไทม์ พร้อมแดชบอร์ดฉายโปรเจกเตอร์ สแกน QR Code และดาวน์โหลดรายงาน CSV",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
